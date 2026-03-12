@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#0d0d14"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<title>PayTrack</title>
+<style>
+:root {
+  --bg:      #0d0d14;
+  --surface: #16161f;
+  --surf2:   #1e1e2a;
+  --border:  #2c2c3e;
+  --accent:  #7c3aed;
+  --cyan:    #06b6d4;
+  --amber:   #f59e0b;
+  --text:    #f0f0ff;
+  --muted:   #8888aa;
+  --green:   #10b981;
+  --red:     #ef4444;
+  --yellow:  #fbbf24;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;padding-bottom:60px;}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.logo{font-size:17px;font-weight:bold;color:var(--cyan);white-space:nowrap;}
+.logo span{color:var(--amber);}
+.nav-right{display:flex;align-items:center;gap:8px;}
+.nav-time{font-size:12px;color:var(--muted);white-space:nowrap;}
+.drive-badge{font-size:11px;font-weight:bold;padding:4px 9px;border-radius:20px;border:1px solid var(--border);cursor:pointer;white-space:nowrap;}
+.drive-badge.connected{color:var(--green);border-color:var(--green);}
+.drive-badge.disconnected{color:var(--muted);border-color:var(--border);}
+.drive-badge.syncing{color:var(--amber);border-color:var(--amber);}
+
+/* TABS */
+.tabs{display:flex;background:var(--surface);border-bottom:2px solid var(--border);}
+.tab-btn{flex:1;padding:12px 0;border:none;background:transparent;color:var(--muted);font-family:Arial,sans-serif;font-size:13px;font-weight:bold;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;}
+.tab-btn.active{color:var(--cyan);border-bottom-color:var(--cyan);background:var(--surf2);}
+
+.panel{display:none;}
+.panel.active{display:block;}
+
+/* SUMMARY */
+.summary-strip{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;background:var(--surf2);border-bottom:1px solid var(--border);}
+.sum-card{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--border);border-radius:10px;padding:12px;}
+.sum-card.month{border-top-color:var(--cyan);}
+.sum-card.year{border-top-color:var(--amber);}
+.sum-label{font-size:10px;font-weight:bold;text-transform:uppercase;color:var(--muted);margin-bottom:4px;letter-spacing:1px;}
+.sum-amount{font-size:17px;font-weight:bold;}
+.sum-card.month .sum-amount{color:var(--cyan);}
+.sum-card.year  .sum-amount{color:var(--amber);}
+.sum-sub{font-size:10px;color:var(--muted);margin-top:3px;}
+
+/* FORM */
+.form-wrap{padding:12px;}
+.form-card{background:var(--surf2);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.section-title{font-size:11px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:var(--cyan);margin-bottom:14px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.field-row.single{grid-template-columns:1fr;}
+.field{display:flex;flex-direction:column;gap:5px;}
+label{font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
+input,select{background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Arial,sans-serif;font-size:14px;padding:11px 12px;outline:none;width:100%;-webkit-appearance:none;appearance:none;}
+input:focus,select:focus{border-color:var(--cyan);}
+input[readonly]{color:var(--cyan);font-size:13px;cursor:default;}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238888aa' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:calc(100% - 12px) center;padding-right:32px;}
+select option{background:var(--surf2);color:var(--text);}
+.amount-wrap{position:relative;}
+.amount-sym{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--amber);font-weight:bold;font-size:15px;pointer-events:none;}
+.amount-wrap input{padding-left:26px;font-size:16px;font-weight:bold;color:var(--amber);}
+input.err,select.err{border-color:var(--red)!important;}
+.submit-btn{width:100%;padding:14px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;letter-spacing:1px;cursor:pointer;margin-top:14px;}
+.submit-btn:active{opacity:0.85;}
+.submit-btn.saved{background:var(--green);}
+
+/* TOAST */
+.toast{position:fixed;bottom:75px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:50px;font-size:13px;font-weight:bold;z-index:9999;display:none;white-space:nowrap;max-width:90vw;text-align:center;}
+.toast.show{display:block;}
+.toast.ok{background:var(--green);color:#fff;}
+.toast.err{background:var(--red);color:#fff;}
+.toast.info{background:var(--amber);color:#000;}
+
+/* DB PANEL */
+.db-controls{padding:12px;display:flex;flex-direction:column;gap:8px;}
+.filter-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.filter-row input,.filter-row select{font-size:13px;padding:9px 10px;border-radius:8px;}
+.action-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.btn-out{padding:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:Arial,sans-serif;font-size:13px;font-weight:bold;border-radius:8px;cursor:pointer;}
+.btn-out:active{opacity:0.8;}
+.btn-out.green{border-color:var(--green);color:var(--green);}
+.records-count{font-size:12px;color:var(--muted);padding:0 12px 8px;}
+.records-list{padding:0 12px;display:flex;flex-direction:column;gap:8px;}
+.record-card{background:var(--surf2);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:10px;padding:12px;}
+.record-card.IDFC{border-left-color:#7c3aed;}
+.record-card.KOTAK{border-left-color:#f59e0b;}
+.record-card.UCO{border-left-color:#06b6d4;}
+.record-card.AIRTEL{border-left-color:#ef4444;}
+.record-card.CASH{border-left-color:#10b981;}
+.rec-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+.rec-purpose{font-size:14px;font-weight:bold;color:var(--text);max-width:65%;word-break:break-word;}
+.rec-amount{font-size:15px;font-weight:bold;color:var(--amber);}
+.rec-meta{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;}
+.tag{font-size:10px;font-weight:bold;padding:3px 7px;border-radius:5px;background:var(--surface);border:1px solid var(--border);color:var(--muted);text-transform:uppercase;}
+.tag.bank{color:var(--accent);}
+.tag.app{color:var(--cyan);}
+.rec-dt{font-size:11px;color:var(--muted);}
+.empty-state{text-align:center;padding:48px 20px;color:var(--muted);}
+.empty-state .icon{font-size:40px;margin-bottom:10px;}
+.empty-state p{font-size:14px;line-height:1.6;}
+
+/* SETUP MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+.modal-overlay.hidden{display:none;}
+.modal{background:var(--surf2);border:1px solid var(--border);border-radius:16px;padding:20px;width:100%;max-width:480px;margin:auto;}
+.modal h2{font-size:16px;font-weight:bold;color:var(--cyan);margin-bottom:6px;}
+.modal .subtitle{font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.5;}
+.step{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;}
+.step-num{font-size:10px;font-weight:bold;color:var(--amber);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+.step p{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px;}
+.step code{display:block;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--cyan);word-break:break-all;margin:6px 0;}
+.step a{color:var(--cyan);text-decoration:none;font-weight:bold;}
+.modal-input{background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Arial,sans-serif;font-size:13px;padding:10px 12px;outline:none;width:100%;margin-top:6px;}
+.modal-input:focus{border-color:var(--cyan);}
+.modal-btn{width:100%;padding:13px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;cursor:pointer;margin-top:14px;}
+.modal-btn:active{opacity:0.85;}
+.modal-btn.secondary{background:var(--surface);border:1px solid var(--border);color:var(--muted);margin-top:8px;}
+.warn-box{background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--yellow);line-height:1.5;margin-bottom:12px;}
+.sync-status{font-size:11px;color:var(--muted);text-align:center;padding:6px 12px 0;}
+</style>
+</head>
+<body>
+
+<!-- SETUP MODAL -->
+<div class="modal-overlay" id="setupModal">
+  <div class="modal">
+    <h2>🔗 Connect Google Drive</h2>
+    <p class="subtitle">One-time setup. Your data will auto-sync to Google Drive after this.</p>
+
+    <div class="warn-box">⚠️ Do this on a desktop/laptop first, then use the app on your Android phone.</div>
+
+    <div class="step">
+      <div class="step-num">Step 1 — Create Google Cloud Project</div>
+      <p>Open this link on your browser:</p>
+      <code>console.cloud.google.com</code>
+      <p>Click <b>New Project</b> → Name it <b>PayTrack</b> → Click <b>Create</b></p>
+    </div>
+
+    <div class="step">
+      <div class="step-num">Step 2 — Enable Google Drive API</div>
+      <p>In your project, go to <b>APIs & Services → Library</b></p>
+      <p>Search <b>Google Drive API</b> → Click it → Click <b>Enable</b></p>
+    </div>
+
+    <div class="step">
+      <div class="step-num">Step 3 — Create OAuth Credentials</div>
+      <p>Go to <b>APIs & Services → Credentials</b></p>
+      <p>Click <b>Create Credentials → OAuth Client ID</b></p>
+      <p>Application type: <b>Web application</b></p>
+      <p>Under <b>Authorised JavaScript origins</b>, add the full URL of this HTML file (e.g. <b>file://</b> or your hosted URL)</p>
+      <p>Click <b>Create</b> — you'll get a <b>Client ID</b></p>
+    </div>
+
+    <div class="step">
+      <div class="step-num">Step 4 — Paste Your Client ID Below</div>
+      <p>Copy the Client ID (ends with <b>.apps.googleusercontent.com</b>) and paste it here:</p>
+      <input class="modal-input" type="text" id="clientIdInput" placeholder="xxxx.apps.googleusercontent.com"/>
+    </div>
+
+    <button class="modal-btn" onclick="saveClientId()">Save &amp; Connect Google Drive</button>
+    <button class="modal-btn secondary" onclick="skipSetup()">Skip for now (use local storage only)</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<nav>
+  <div class="logo">Pay<span>Track</span></div>
+  <div class="nav-right">
+    <div class="nav-time" id="navTime">--:--:--</div>
+    <div class="drive-badge disconnected" id="driveBadge" onclick="openDriveSetup()">Drive</div>
+  </div>
+</nav>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('add')">+ Add Entry</button>
+  <button class="tab-btn" onclick="switchTab('db')">Records</button>
+  <button class="tab-btn" onclick="switchTab('setup')">Settings</button>
+</div>
+
+<!-- ADD PANEL -->
+<div class="panel active" id="panel-add">
+  <div class="summary-strip">
+    <div class="sum-card month">
+      <div class="sum-label">This Month</div>
+      <div class="sum-amount" id="monthTotal">₹0.00</div>
+      <div class="sum-sub" id="monthLabel">—</div>
+    </div>
+    <div class="sum-card year">
+      <div class="sum-label">This Year</div>
+      <div class="sum-amount" id="yearTotal">₹0.00</div>
+      <div class="sum-sub" id="yearLabel">—</div>
+    </div>
+  </div>
+
+  <div class="form-wrap">
+    <div class="form-card">
+      <div class="section-title">New Transaction</div>
+      <div class="field-row">
+        <div class="field"><label>Date</label><input type="text" id="fDate" readonly/></div>
+        <div class="field"><label>Time</label><input type="text" id="fTime" readonly/></div>
+      </div>
+      <div class="field-row single">
+        <div class="field">
+          <label>Amount (₹)</label>
+          <div class="amount-wrap">
+            <span class="amount-sym">₹</span>
+            <input type="number" id="fAmount" placeholder="0.00" inputmode="decimal" min="0" step="0.01"/>
+          </div>
+        </div>
+      </div>
+      <div class="field-row single">
+        <div class="field"><label>Purpose</label><input type="text" id="fPurpose" placeholder="e.g. Groceries, Rent..."/></div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Bank Mode</label>
+          <select id="fBank">
+            <option value="">Select</option>
+            <option>IDFC</option><option>KOTAK</option><option>UCO</option>
+            <option>AIRTEL</option><option>CASH</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>App Used</label>
+          <select id="fApp">
+            <option value="">Select</option>
+            <option>PHONEPE</option><option>GPAY</option><option>AIRTEL PAY</option>
+            <option>IDFC PAY</option><option>KOTAK</option><option>OTHERS</option>
+          </select>
+        </div>
+      </div>
+      <button class="submit-btn" id="submitBtn" onclick="submitEntry()">SAVE TRANSACTION</button>
+      <div class="sync-status" id="syncStatus"></div>
+    </div>
+  </div>
+</div>
+
+<!-- RECORDS PANEL -->
+<div class="panel" id="panel-db">
+  <div style="height:10px"></div>
+  <div class="db-controls">
+    <div class="filter-row">
+      <input type="date" id="fFilterFrom" onchange="renderRecords()"/>
+      <input type="date" id="fFilterTo" onchange="renderRecords()"/>
+    </div>
+    <div class="filter-row">
+      <select id="fFilterBank" onchange="renderRecords()">
+        <option value="">All Banks</option>
+        <option>IDFC</option><option>KOTAK</option><option>UCO</option>
+        <option>AIRTEL</option><option>CASH</option>
+      </select>
+      <select id="fFilterApp" onchange="renderRecords()">
+        <option value="">All Apps</option>
+        <option>PHONEPE</option><option>GPAY</option><option>AIRTEL PAY</option>
+        <option>IDFC PAY</option><option>KOTAK</option><option>OTHERS</option>
+      </select>
+    </div>
+    <div class="action-row">
+      <button class="btn-out" onclick="clearFilters()">Clear Filters</button>
+      <button class="btn-out green" onclick="downloadCSV()">Export CSV</button>
+    </div>
+  </div>
+  <div class="records-count" id="recordsCount"></div>
+  <div class="records-list" id="recordsList"></div>
+  <div style="height:20px"></div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div class="panel" id="panel-setup">
+  <div style="padding:12px;display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+
+    <!-- Drive Status Card -->
+    <div class="form-card" style="padding:14px;">
+      <div class="section-title">Google Drive</div>
+      <div id="driveStatusCard" style="font-size:13px;color:var(--muted);margin-bottom:12px;">Not connected</div>
+      <button class="submit-btn" style="margin-top:0;" onclick="openDriveSetup()">Setup / Change Google Drive</button>
+      <div style="height:8px;"></div>
+      <button class="submit-btn" id="signInBtn" style="margin-top:0;display:none;background:var(--green);" onclick="signInGoogle()">Sign In with Google</button>
+      <button class="submit-btn" id="signOutBtn" style="margin-top:8px;display:none;background:var(--surface);border:1px solid var(--border);color:var(--muted);" onclick="signOutGoogle()">Sign Out</button>
+      <div style="height:8px;"></div>
+      <button class="submit-btn" style="margin-top:0;background:var(--cyan);color:#000;" onclick="forceSyncDrive()">Sync Now to Drive</button>
+    </div>
+
+    <!-- Backup Card -->
+    <div class="form-card" style="padding:14px;">
+      <div class="section-title">Local Backup</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;">Export all data as JSON file. Keep this as a backup in WhatsApp or Google Drive folder.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="btn-out green" onclick="exportJSON()">Export Backup</button>
+        <button class="btn-out" onclick="document.getElementById('importFile').click()">Restore Backup</button>
+      </div>
+      <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importJSON(event)"/>
+    </div>
+
+    <!-- Client ID card -->
+    <div class="form-card" style="padding:14px;">
+      <div class="section-title">Client ID</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Current saved Client ID:</p>
+      <div id="clientIdDisplay" style="font-size:11px;color:var(--cyan);word-break:break-all;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;">Not set</div>
+      <button class="btn-out" style="width:100%;margin-top:10px;" onclick="clearClientId()">Clear &amp; Reset</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://apis.google.com/js/api.js" async defer onload="gapiLoaded()"></script>
+<script src="https://accounts.google.com/gsi/client" async defer onload="gisLoaded()"></script>
+
+<script>
+// ─── CONSTANTS ────────────────────────────────────────────────
+var SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+var FILE_NAME = 'paytrack_data.json';
+var K = {
+  records:'pt_records', monthTotal:'pt_month_total', yearTotal:'pt_year_total',
+  monthTag:'pt_month_tag', yearTag:'pt_year_tag', clientId:'pt_client_id',
+  driveFileId:'pt_drive_file_id', setupDone:'pt_setup_done'
+};
+
+// ─── STATE ────────────────────────────────────────────────────
+var gapiReady = false, gisReady = false, tokenClient = null, accessToken = null;
+var isSyncing = false;
+
+// ─── GAPI INIT ────────────────────────────────────────────────
+function gapiLoaded(){
+  gapi.load('client', function(){
+    gapi.client.init({
+      discoveryDocs:['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
+    }).then(function(){
+      gapiReady = true;
+      tryAutoSignIn();
+    }).catch(function(e){ console.warn('GAPI init failed',e); });
+  });
+}
+
+function gisLoaded(){
+  gisReady = true;
+  var cid = localStorage.getItem(K.clientId);
+  if(cid) initTokenClient(cid);
+}
+
+function initTokenClient(clientId){
+  if(!window.google || !google.accounts) return;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: SCOPES,
+    callback: function(resp){
+      if(resp.error){ showToast('Google sign-in failed: '+resp.error,'err'); return; }
+      accessToken = resp.access_token;
+      gapi.client.setToken({access_token: accessToken});
+      updateDriveBadge('connected');
+      updateSettingsStatus();
+      loadFromDrive();
+    }
+  });
+}
+
+function tryAutoSignIn(){
+  var cid = localStorage.getItem(K.clientId);
+  if(!cid) return;
+  if(gisReady) initTokenClient(cid);
+}
+
+// ─── SIGN IN / OUT ────────────────────────────────────────────
+function signInGoogle(){
+  if(!tokenClient){
+    var cid = localStorage.getItem(K.clientId);
+    if(!cid){ showToast('Set up Client ID first in Settings','err'); return; }
+    initTokenClient(cid);
+  }
+  tokenClient.requestAccessToken({prompt:''});
+}
+
+function signOutGoogle(){
+  if(accessToken && window.google && google.accounts){
+    google.accounts.oauth2.revoke(accessToken, function(){});
+  }
+  accessToken = null;
+  if(window.gapi && gapi.client) gapi.client.setToken(null);
+  updateDriveBadge('disconnected');
+  updateSettingsStatus();
+  showToast('Signed out from Google','info');
+}
+
+// ─── DRIVE BADGE ──────────────────────────────────────────────
+function updateDriveBadge(state){
+  var b = document.getElementById('driveBadge');
+  b.className = 'drive-badge ' + state;
+  if(state==='connected') b.textContent = '✓ Drive';
+  else if(state==='syncing') b.textContent = '⟳ Syncing';
+  else b.textContent = 'Drive';
+}
+
+// ─── SETUP MODAL ──────────────────────────────────────────────
+function openDriveSetup(){
+  var existing = localStorage.getItem(K.clientId);
+  if(existing) document.getElementById('clientIdInput').value = existing;
+  document.getElementById('setupModal').classList.remove('hidden');
+}
+
+function closeSetup(){
+  document.getElementById('setupModal').classList.add('hidden');
+}
+
+function saveClientId(){
+  var val = document.getElementById('clientIdInput').value.trim();
+  if(!val || !val.includes('.apps.googleusercontent.com')){
+    showToast('Please enter a valid Client ID','err'); return;
+  }
+  localStorage.setItem(K.clientId, val);
+  localStorage.setItem(K.setupDone, '1');
+  closeSetup();
+  initTokenClient(val);
+  updateSettingsStatus();
+  showToast('Client ID saved! Now tap Sign In with Google','ok');
+  updateSettingsStatus();
+}
+
+function skipSetup(){
+  localStorage.setItem(K.setupDone, '1');
+  closeSetup();
+  showToast('Using local storage only','info');
+}
+
+function clearClientId(){
+  localStorage.removeItem(K.clientId);
+  localStorage.removeItem(K.driveFileId);
+  signOutGoogle();
+  updateSettingsStatus();
+  showToast('Client ID cleared','info');
+}
+
+// ─── DRIVE SYNC ───────────────────────────────────────────────
+function buildPayload(){
+  return JSON.stringify({
+    records: getRecords(),
+    monthTotal: localStorage.getItem(K.monthTotal)||'0',
+    yearTotal:  localStorage.getItem(K.yearTotal)||'0',
+    monthTag:   localStorage.getItem(K.monthTag)||'',
+    yearTag:    localStorage.getItem(K.yearTag)||''
+  });
+}
+
+function saveToDrive(callback){
+  if(!accessToken){ if(callback) callback(false); return; }
+  isSyncing = true;
+  updateDriveBadge('syncing');
+  setSyncStatus('Syncing to Drive...');
+
+  var payload = buildPayload();
+  var fileId = localStorage.getItem(K.driveFileId);
+
+  if(fileId){
+    // Update existing file
+    fetch('https://www.googleapis.com/upload/drive/v3/files/'+fileId+'?uploadType=media', {
+      method: 'PATCH',
+      headers: {'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'},
+      body: payload
+    }).then(function(r){
+      if(r.ok){ syncDone(true); if(callback) callback(true); }
+      else {
+        // File might be deleted — create new
+        localStorage.removeItem(K.driveFileId);
+        createDriveFile(payload, callback);
+      }
+    }).catch(function(){ syncDone(false); if(callback) callback(false); });
+  } else {
+    createDriveFile(payload, callback);
+  }
+}
+
+function createDriveFile(payload, callback){
+  var meta = {name: FILE_NAME, parents: ['appDataFolder']};
+  var boundary = '-------paytrack_boundary';
+  var body = '--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+
+    JSON.stringify(meta)+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+
+    payload+'\r\n--'+boundary+'--';
+  fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method: 'POST',
+    headers: {
+      'Authorization':'Bearer '+accessToken,
+      'Content-Type':'multipart/related; boundary='+boundary
+    },
+    body: body
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(d.id){
+      localStorage.setItem(K.driveFileId, d.id);
+      syncDone(true);
+      if(callback) callback(true);
+    } else { syncDone(false); if(callback) callback(false); }
+  }).catch(function(){ syncDone(false); if(callback) callback(false); });
+}
+
+function loadFromDrive(){
+  if(!accessToken) return;
+  setSyncStatus('Loading from Drive...');
+  updateDriveBadge('syncing');
+
+  // Find file in appDataFolder
+  fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%22'+FILE_NAME+'%22&fields=files(id,name)', {
+    headers: {'Authorization':'Bearer '+accessToken}
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(d.files && d.files.length > 0){
+      var fid = d.files[0].id;
+      localStorage.setItem(K.driveFileId, fid);
+      return fetch('https://www.googleapis.com/drive/v3/files/'+fid+'?alt=media', {
+        headers: {'Authorization':'Bearer '+accessToken}
+      });
+    } else { syncDone(true); return null; }
+  }).then(function(r){
+    if(!r) return null;
+    return r.json();
+  }).then(function(data){
+    if(!data) return;
+    if(data.records) saveRecords(data.records);
+    if(data.monthTotal !== undefined) localStorage.setItem(K.monthTotal, data.monthTotal);
+    if(data.yearTotal !== undefined)  localStorage.setItem(K.yearTotal,  data.yearTotal);
+    if(data.monthTag)  localStorage.setItem(K.monthTag, data.monthTag);
+    if(data.yearTag)   localStorage.setItem(K.yearTag,  data.yearTag);
+    checkReset();
+    refreshSummary();
+    syncDone(true);
+    showToast('Data loaded from Drive','ok');
+  }).catch(function(e){ console.warn('Load error',e); syncDone(false); });
+}
+
+function syncDone(ok){
+  isSyncing = false;
+  if(accessToken) updateDriveBadge('connected');
+  else updateDriveBadge('disconnected');
+  setSyncStatus(ok ? 'Last synced: '+getTimeStr() : 'Sync failed — saved locally');
+}
+
+function forceSyncDrive(){
+  if(!accessToken){ showToast('Not signed in to Google','err'); return; }
+  saveToDrive(function(ok){
+    showToast(ok ? 'Synced to Drive!' : 'Sync failed','ok');
+  });
+}
+
+function setSyncStatus(msg){
+  var el = document.getElementById('syncStatus');
+  if(el) el.textContent = msg;
+}
+
+// ─── SETTINGS STATUS ──────────────────────────────────────────
+function updateSettingsStatus(){
+  var cid = localStorage.getItem(K.clientId)||'';
+  document.getElementById('clientIdDisplay').textContent = cid || 'Not set';
+
+  var card = document.getElementById('driveStatusCard');
+  var signInBtn = document.getElementById('signInBtn');
+  var signOutBtn = document.getElementById('signOutBtn');
+
+  if(!cid){
+    card.textContent = 'Client ID not set. Tap Setup to configure.';
+    card.style.color = 'var(--red)';
+    signInBtn.style.display = 'none';
+    signOutBtn.style.display = 'none';
+  } else if(!accessToken){
+    card.textContent = 'Client ID set. Sign in to Google to activate sync.';
+    card.style.color = 'var(--amber)';
+    signInBtn.style.display = 'block';
+    signOutBtn.style.display = 'none';
+  } else {
+    card.textContent = '✓ Connected and syncing automatically.';
+    card.style.color = 'var(--green)';
+    signInBtn.style.display = 'none';
+    signOutBtn.style.display = 'block';
+  }
+}
+
+// ─── LOCAL BACKUP ─────────────────────────────────────────────
+function exportJSON(){
+  var data = {
+    records: getRecords(),
+    monthTotal: localStorage.getItem(K.monthTotal)||'0',
+    yearTotal:  localStorage.getItem(K.yearTotal)||'0',
+    monthTag:   localStorage.getItem(K.monthTag)||'',
+    yearTag:    localStorage.getItem(K.yearTag)||''
+  };
+  var url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  var a = document.createElement('a');
+  a.href = url; a.download = 'paytrack_backup_'+getDateStr().replace(/\//g,'')+'.json'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Backup exported!','ok');
+}
+
+function importJSON(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      var data = JSON.parse(ev.target.result);
+      if(data.records) saveRecords(data.records);
+      if(data.monthTotal) localStorage.setItem(K.monthTotal, data.monthTotal);
+      if(data.yearTotal)  localStorage.setItem(K.yearTotal,  data.yearTotal);
+      if(data.monthTag)   localStorage.setItem(K.monthTag,   data.monthTag);
+      if(data.yearTag)    localStorage.setItem(K.yearTag,    data.yearTag);
+      checkReset(); refreshSummary();
+      showToast('Backup restored! '+data.records.length+' records','ok');
+    }catch(err){ showToast('Invalid backup file','err'); }
+  };
+  reader.readAsText(file);
+  e.target.value='';
+}
+
+// ─── STORAGE HELPERS ──────────────────────────────────────────
+function pad(n){ return String(n).padStart(2,'0'); }
+function getDateStr(){ var d=new Date(); return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+String(d.getFullYear()).slice(2); }
+function getTimeStr(){ var d=new Date(); return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()); }
+function monthTag(){ var d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1); }
+function yearTag(){ return String(new Date().getFullYear()); }
+function monthLabel(tag){ if(!tag) return ''; var p=tag.split('-'); var n=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return n[parseInt(p[1])-1]+' '+p[0]; }
+function fmt(n){ return '\u20b9'+parseFloat(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function getRecords(){ try{ return JSON.parse(localStorage.getItem(K.records))||[]; }catch(e){ return []; } }
+function saveRecords(r){ localStorage.setItem(K.records,JSON.stringify(r)); }
+
+function checkReset(){
+  var cm=monthTag(), cy=yearTag();
+  if(localStorage.getItem(K.monthTag)!==cm){ localStorage.setItem(K.monthTotal,'0'); localStorage.setItem(K.monthTag,cm); }
+  if(localStorage.getItem(K.yearTag)!==cy){ localStorage.setItem(K.yearTotal,'0'); localStorage.setItem(K.yearTag,cy); }
+}
+function mTotal(){ return parseFloat(localStorage.getItem(K.monthTotal)||0); }
+function yTotal(){ return parseFloat(localStorage.getItem(K.yearTotal)||0); }
+function addTotals(a){ localStorage.setItem(K.monthTotal,mTotal()+a); localStorage.setItem(K.yearTotal,yTotal()+a); }
+
+function refreshSummary(){
+  checkReset();
+  document.getElementById('monthTotal').textContent=fmt(mTotal());
+  document.getElementById('yearTotal').textContent=fmt(yTotal());
+  document.getElementById('monthLabel').textContent=monthLabel(localStorage.getItem(K.monthTag)||monthTag());
+  document.getElementById('yearLabel').textContent=localStorage.getItem(K.yearTag)||yearTag();
+}
+
+function tick(){
+  document.getElementById('navTime').textContent=getTimeStr();
+  document.getElementById('fTime').value=getTimeStr();
+  document.getElementById('fDate').value=getDateStr();
+}
+
+// ─── TABS ─────────────────────────────────────────────────────
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){
+    b.classList.toggle('active',(tab==='add'&&i===0)||(tab==='db'&&i===1)||(tab==='setup'&&i===2));
+  });
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+  document.getElementById('panel-'+tab).classList.add('active');
+  if(tab==='db') renderRecords();
+  if(tab==='setup') updateSettingsStatus();
+}
+
+// ─── SUBMIT ───────────────────────────────────────────────────
+function submitEntry(){
+  var amtEl=document.getElementById('fAmount'),purEl=document.getElementById('fPurpose'),
+      bkEl=document.getElementById('fBank'),apEl=document.getElementById('fApp');
+  amtEl.classList.remove('err');purEl.classList.remove('err');bkEl.classList.remove('err');apEl.classList.remove('err');
+  var amt=parseFloat(amtEl.value), ok=true;
+  if(!amt||amt<=0){amtEl.classList.add('err');ok=false;}
+  if(!purEl.value.trim()){purEl.classList.add('err');ok=false;}
+  if(!bkEl.value){bkEl.classList.add('err');ok=false;}
+  if(!apEl.value){apEl.classList.add('err');ok=false;}
+  if(!ok) return;
+
+  var entry={id:Date.now(),date:document.getElementById('fDate').value,time:document.getElementById('fTime').value,amount:amt,purpose:purEl.value.trim(),bank:bkEl.value,app:apEl.value};
+  var recs=getRecords(); recs.unshift(entry); saveRecords(recs);
+  addTotals(amt); refreshSummary();
+  amtEl.value='';purEl.value='';bkEl.value='';apEl.value='';
+
+  var btn=document.getElementById('submitBtn');
+  btn.textContent='SAVED!'; btn.classList.add('saved');
+  setTimeout(function(){ btn.textContent='SAVE TRANSACTION'; btn.classList.remove('saved'); },1200);
+
+  // Sync to Drive
+  if(accessToken){
+    saveToDrive(function(ok){
+      showToast(ok?'Saved & synced to Drive!':'Saved locally (sync failed)','ok');
+    });
+  } else {
+    showToast('Transaction saved locally','ok');
+  }
+}
+
+// ─── TOAST ────────────────────────────────────────────────────
+function showToast(msg, type){
+  var el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='toast show '+(type||'ok');
+  clearTimeout(el._t);
+  el._t=setTimeout(function(){ el.classList.remove('show'); },2500);
+}
+
+// ─── RECORDS ──────────────────────────────────────────────────
+function renderRecords(){
+  var recs=getRecords();
+  var from=document.getElementById('fFilterFrom').value,to=document.getElementById('fFilterTo').value;
+  var bk=document.getElementById('fFilterBank').value,ap=document.getElementById('fFilterApp').value;
+  if(from) recs=recs.filter(function(r){ return dmy2date(r.date)>=new Date(from); });
+  if(to){ recs=recs.filter(function(r){ var d=new Date(to);d.setHours(23,59,59);return dmy2date(r.date)<=d; }); }
+  if(bk) recs=recs.filter(function(r){ return r.bank===bk; });
+  if(ap) recs=recs.filter(function(r){ return r.app===ap; });
+  var total=recs.reduce(function(s,r){ return s+r.amount; },0);
+  document.getElementById('recordsCount').textContent=recs.length+' record'+(recs.length!==1?'s':'')+'   |   Total: '+fmt(total);
+  var list=document.getElementById('recordsList');
+  if(!recs.length){ list.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>No transactions found.</p></div>'; return; }
+  list.innerHTML=recs.map(function(r){
+    return '<div class="record-card '+r.bank+'">'+
+      '<div class="rec-top"><div class="rec-purpose">'+esc(r.purpose)+'</div><div class="rec-amount">'+fmt(r.amount)+'</div></div>'+
+      '<div class="rec-meta"><span class="tag bank">'+r.bank+'</span><span class="tag app">'+r.app+'</span></div>'+
+      '<div class="rec-dt">'+r.date+'  |  '+r.time+'</div></div>';
+  }).join('');
+}
+
+function dmy2date(s){ var p=s.split('/'); return new Date('20'+p[2]+'-'+p[1]+'-'+p[0]); }
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function clearFilters(){
+  ['fFilterFrom','fFilterTo','fFilterBank','fFilterApp'].forEach(function(id){ document.getElementById(id).value=''; });
+  renderRecords();
+}
+
+function downloadCSV(){
+  var recs=getRecords();
+  var bk=document.getElementById('fFilterBank').value, ap=document.getElementById('fFilterApp').value;
+  if(bk) recs=recs.filter(function(r){ return r.bank===bk; });
+  if(ap) recs=recs.filter(function(r){ return r.app===ap; });
+  if(!recs.length){ showToast('No records to export','err'); return; }
+  var csv='Date,Time,Amount,Purpose,Bank Mode,App Used\n';
+  recs.forEach(function(r){ csv+=r.date+','+r.time+','+r.amount+',"'+r.purpose.replace(/"/g,'""')+'",'+r.bank+','+r.app+'\n'; });
+  var url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  var a=document.createElement('a'); a.href=url; a.download='paytrack_'+getDateStr().replace(/\//g,'')+'.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV downloaded!','ok');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────
+checkReset(); refreshSummary(); tick(); setInterval(tick,1000);
+
+// Show setup modal if first time
+if(!localStorage.getItem(K.setupDone)){
+  document.getElementById('setupModal').classList.remove('hidden');
+} else {
+  document.getElementById('setupModal').classList.add('hidden');
+}
+</script>
+</body>
+</html>
